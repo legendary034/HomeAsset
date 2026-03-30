@@ -177,11 +177,18 @@ async function navigate(route, param = null) {
 
 // ── Shared data loaders ────────────────────────────────────────────────────
 async function refreshShared() {
-  [S.locations, S.categories, S.tags] = await Promise.all([
+  // Use allSettled so one failing endpoint doesn't kill the rest
+  const [locs, cats, tgs] = await Promise.allSettled([
     api.get('/locations/flat'),
     api.get('/categories'),
     api.get('/tags'),
   ]);
+  S.locations  = locs.status  === 'fulfilled' ? locs.value  : [];
+  S.categories = cats.status  === 'fulfilled' ? cats.value  : [];
+  S.tags       = tgs.status   === 'fulfilled' ? tgs.value   : [];
+  if (locs.status === 'rejected') console.error('locations/flat failed:', locs.reason);
+  if (cats.status === 'rejected') console.error('categories failed:', cats.reason);
+  if (tgs.status  === 'rejected') console.error('tags failed:', tgs.reason);
 }
 
 // ── Quick search (topbar) ─────────────────────────────────────────────────
@@ -262,11 +269,14 @@ function itemCardHtml(item) {
 
 // ── Dashboard ──────────────────────────────────────────────────────────────
 async function renderDashboard() {
-  const [stats, recent] = await Promise.all([
+  const [statsRes, recentRes] = await Promise.allSettled([
     api.get('/stats'),
-    api.get('/items?limit=12'),
+    api.get('/items'),
   ]);
   await refreshShared();
+
+  const stats  = statsRes.status  === 'fulfilled' ? statsRes.value  : { total_items:0, total_locations:0, total_categories:0, total_tags:0 };
+  const recent = recentRes.status === 'fulfilled' ? recentRes.value : [];
 
   const statCards = [
     { icon:'📦', value: stats.total_items,      label:'Items' },
