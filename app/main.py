@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 
 from .database import engine, Base, get_db
@@ -22,7 +22,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="HomeAsset", version="1.0.0", lifespan=lifespan)
 
-# ── 1. API Routers FIRST ───────────────────────────────────────────────────────
+# ── 1. Static file mounts FIRST ───────────────────────────────────────────────
+#    StaticFiles sub-apps are path-prefix matched and resolved quickly.
+#    They must sit above the API routers so they are never shadowed.
+app.mount("/uploads",   StaticFiles(directory="/data/uploads"),   name="uploads")
+app.mount("/documents", StaticFiles(directory="/data/documents"), name="documents")
+app.mount("/static",    StaticFiles(directory="app/static"),      name="static")
+
+# ── 2. API Routers SECOND ─────────────────────────────────────────────────────
 app.include_router(items.router,      prefix="/api/items",      tags=["items"])
 app.include_router(locations.router,  prefix="/api/locations",  tags=["locations"])
 app.include_router(categories.router, prefix="/api/categories", tags=["categories"])
@@ -45,13 +52,15 @@ def stats(db: Session = Depends(get_db)):
     }
 
 
-# ── 2. Static file mounts SECOND ──────────────────────────────────────────────
-app.mount("/uploads",   StaticFiles(directory="/data/uploads"),   name="uploads")
-app.mount("/documents", StaticFiles(directory="/data/documents"), name="documents")
-app.mount("/static",    StaticFiles(directory="app/static"),      name="static")
-
-
-# ── 3. SPA catch-all LAST ─────────────────────────────────────────────────────
+# ── 3. SPA Catch-all LAST ─────────────────────────────────────────────────────
+#    Safety guard: if an /api/* path reaches here it means the route genuinely
+#    doesn't exist — return 404 JSON so the browser never receives HTML instead
+#    of JSON and shows a cryptic "Unexpected token '<'" error.
 @app.get("/{full_path:path}")
 def serve_spa(full_path: str):
+    if full_path.startswith("api/") or full_path == "api":
+        return JSONResponse(
+            status_code=404,
+            content={"detail": f"API route not found: /{full_path}"},
+        )
     return FileResponse("app/static/index.html")
