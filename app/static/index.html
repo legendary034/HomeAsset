@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HomeAsset — Home Inventory</title>
+  <meta name="description" content="Self-hosted home inventory system to track and organize items by location." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+<!-- Mobile sidebar overlay -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- ── Sidebar ──────────────────────────────────────────────────────────────── -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">🏠</div>
+    <div>
+      <div class="sidebar-logo-text">HomeAsset</div>
+      <div class="sidebar-logo-sub">Home Inventory</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-link" id="nav-dashboard" onclick="navigate('dashboard')">
+      <span class="nav-icon">📊</span><span>Dashboard</span>
+    </div>
+    <div class="nav-link" id="nav-locations" onclick="navigate('locations')">
+      <span class="nav-icon">📍</span><span>Locations</span>
+    </div>
+    <div class="nav-link" id="nav-items" onclick="navigate('items')">
+      <span class="nav-icon">📦</span><span>All Items</span>
+    </div>
+    <div class="nav-link" id="nav-search" onclick="navigate('search')">
+      <span class="nav-icon">🔍</span><span>Search</span>
+    </div>
+    <div class="nav-link" id="nav-settings" onclick="navigate('settings')">
+      <span class="nav-icon">⚙️</span><span>Settings</span>
+    </div>
+  </nav>
+
+  <div class="sidebar-section">Locations</div>
+  <div class="sidebar-tree" id="sidebar-tree">
+    <div class="loader" style="padding:20px"><div class="spinner"></div></div>
+  </div>
+</aside>
+
+<!-- ── Main ──────────────────────────────────────────────────────────────────── -->
+<div class="main-wrapper">
+  <header class="topbar">
+    <button class="menu-btn" onclick="toggleSidebar()" aria-label="Menu">☰</button>
+    <div class="topbar-search">
+      <span class="topbar-search-icon">🔍</span>
+      <input type="text" id="quick-search" placeholder="Quick search…" autocomplete="off"
+             oninput="onQuickSearch(this.value)" onfocus="navigate('search')" />
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-primary" id="btn-add-item" onclick="openAddItemModal()">+ Add Item</button>
+    </div>
+  </header>
+
+  <main class="main-content" id="main-content">
+    <div class="loader"><div class="spinner"></div> Loading…</div>
+  </main>
+</div>
+
+<!-- ── Modal ─────────────────────────────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div class="modal" id="modal-container" onclick="event.stopPropagation()">
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<!-- ── Toasts ─────────────────────────────────────────────────────────────────── -->
+<div class="toast-container" id="toast-container"></div>
+
+<script src="/static/js/app.js"></script>
+<script src="/static/js/views.js"></script>
+</body>
+</html>

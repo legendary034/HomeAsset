@@ -1,0 +1,11 @@
+services:
+  home-asset:
+    build: .
+    container_name: home-asset
+    ports:
+      - "7745:8000"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=sqlite:////data/home_asset.db
