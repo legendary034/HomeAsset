@@ -15,12 +15,7 @@ const S = {
 // ── API helpers ────────────────────────────────────────────────────────────
 const api = {
   async _fetch(method, path, body) {
-    // Ensure trailing slash before any query string so FastAPI routers
-    // match directly without issuing a redirect that hits the catch-all.
-    let [pathname, qs] = path.split('?');
-    if (!pathname.endsWith('/')) pathname += '/';
-    const url = '/api' + pathname + (qs ? '?' + qs : '');
-
+    const url = '/api' + path;
     const opts = { method, headers: {} };
     if (body !== undefined && !(body instanceof FormData)) {
       opts.headers['Content-Type'] = 'application/json';

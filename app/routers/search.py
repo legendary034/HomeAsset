@@ -10,7 +10,7 @@ from ..schemas import ItemSummary
 router = APIRouter()
 
 
-@router.get("/", response_model=List[ItemSummary])
+@router.get("", response_model=List[ItemSummary])
 def search_items(
     q: Optional[str] = None,
     tag_ids: Optional[str] = None,

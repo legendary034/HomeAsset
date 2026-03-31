@@ -26,7 +26,7 @@ def _get_or_404(db, item_id):
 
 # ── List / Filter ──────────────────────────────────────────────────────────────
 
-@router.get("/", response_model=List[ItemSummary])
+@router.get("", response_model=List[ItemSummary])
 def get_items(
     location_id: Optional[int] = None,
     category_id: Optional[int] = None,
@@ -54,7 +54,7 @@ def get_item(item_id: int, db: Session = Depends(get_db)):
 
 # ── Create ─────────────────────────────────────────────────────────────────────
 
-@router.post("/", response_model=ItemDetail)
+@router.post("", response_model=ItemDetail)
 def create_item(data: ItemCreate, db: Session = Depends(get_db)):
     item = Item(
         name=data.name,

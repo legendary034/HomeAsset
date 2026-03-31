@@ -63,7 +63,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="HomeAsset", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="HomeAsset", version="1.0.0", lifespan=lifespan, redirect_slashes=False)
 
 # ── 1. API Routers FIRST ───────────────────────────────────────────────────────
 app.include_router(items.router,      prefix="/api/items",      tags=["items"])

@@ -1,11 +1,19 @@
 services:
-  home-asset:
+  homeasset:
     build: .
-    container_name: home-asset
+    image: homeasset:latest
+    container_name: homeasset
+    restart: unless-stopped
     ports:
+      # Maps your laptop's 7745 to Uvicorn's internal port
       - "7745:8000"
     volumes:
+      # The "Physical Bridge" for all your data
       - ./data:/data
-    restart: unless-stopped
     environment:
-      - DATABASE_URL=sqlite:////data/home_asset.db
+      # Standard FastAPI / Uvicorn toggles
+      - LOG_LEVEL=info
+      - DATABASE_URL=sqlite:////data/homeasset.db
+      # If your code uses these, they now match your mounts
+      - UPLOAD_DIR=/data/uploads
+      - DOC_DIR=/data/documents

@@ -9,12 +9,12 @@ from ..schemas import TagCreate, TagResponse
 router = APIRouter()
 
 
-@router.get("/", response_model=List[TagResponse])
+@router.get("", response_model=List[TagResponse])
 def get_tags(db: Session = Depends(get_db)):
     return db.query(Tag).order_by(Tag.name).all()
 
 
-@router.post("/", response_model=TagResponse)
+@router.post("", response_model=TagResponse)
 def create_tag(data: TagCreate, db: Session = Depends(get_db)):
     # Return existing tag if name already used (case-insensitive)
     existing = db.query(Tag).filter(Tag.name.ilike(data.name)).first()

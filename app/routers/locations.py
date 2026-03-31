@@ -27,7 +27,7 @@ def _build_tree(locations: list, parent_id=None) -> list:
     return result
 
 
-@router.get("/", response_model=List[LocationNode])
+@router.get("", response_model=List[LocationNode])
 def get_locations(db: Session = Depends(get_db)):
     locations = db.query(Location).all()
     return _build_tree(locations)
@@ -59,7 +59,7 @@ def get_location(location_id: int, db: Session = Depends(get_db)):
     }
 
 
-@router.post("/")
+@router.post("")
 def create_location(data: LocationCreate, db: Session = Depends(get_db)):
     if data.parent_id:
         parent = db.query(Location).filter(Location.id == data.parent_id).first()

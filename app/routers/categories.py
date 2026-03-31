@@ -9,12 +9,12 @@ from ..schemas import CategoryCreate, CategoryUpdate, CategoryResponse
 router = APIRouter()
 
 
-@router.get("/", response_model=List[CategoryResponse])
+@router.get("", response_model=List[CategoryResponse])
 def get_categories(db: Session = Depends(get_db)):
     return db.query(Category).order_by(Category.name).all()
 
 
-@router.post("/", response_model=CategoryResponse)
+@router.post("", response_model=CategoryResponse)
 def create_category(data: CategoryCreate, db: Session = Depends(get_db)):
     cat = Category(**data.model_dump())
     db.add(cat)
