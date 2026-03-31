@@ -193,67 +193,110 @@ function doSearch() {
 // ── Settings ───────────────────────────────────────────────────────────────
 async function renderSettings() {
   await refreshShared();
+  if (!window._settingsSection) window._settingsSection = 'categories';
 
-  const catList = S.categories.map(c => `
-    <div class="settings-item">
-      <span class="settings-item-icon">${c.icon||'🏷️'}</span>
-      <span class="color-dot" style="background:${c.color}"></span>
-      <span class="settings-item-name">${esc(c.name)}</span>
-      <div class="settings-item-actions">
-        <button class="btn btn-ghost btn-sm btn-icon" onclick="editCategory(${c.id})">✏️</button>
-        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteCategory(${c.id})">🗑️</button>
-      </div>
-    </div>`).join('') || '<div style="padding:12px;color:var(--text-3);font-size:13px">No categories yet.</div>';
+  const navItems = [
+    { id: 'categories', icon: '🏷️', label: 'Categories' },
+    { id: 'tags',       icon: '🔖', label: 'Tags' },
+    { id: 'export',     icon: '📤', label: 'Data Export' },
+  ];
 
-  const tagList = S.tags.map(t => `
-    <div class="settings-item">
-      <span class="settings-item-name"># ${esc(t.name)}</span>
-      <div class="settings-item-actions">
-        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteTag(${t.id})">🗑️</button>
-      </div>
-    </div>`).join('') || '<div style="padding:12px;color:var(--text-3);font-size:13px">No tags yet.</div>';
+  const navHtml = navItems.map(s => `
+    <div class="settings-nav-item ${window._settingsSection === s.id ? 'active' : ''}"
+         onclick="selectSettingsSection('${s.id}')">
+      <span class="settings-nav-icon">${s.icon}</span>
+      <span>${s.label}</span>
+    </div>`).join('');
 
   document.getElementById('main-content').innerHTML = `
     <div class="page-header"><div class="page-title">⚙️ Settings</div></div>
-    <div class="settings-grid">
-      <div class="settings-card">
-        <div class="settings-card-header">
-          <span class="settings-card-title">Categories</span>
-          <button class="btn btn-primary btn-sm" onclick="openCategoryModal()">+ Add</button>
-        </div>
-        <div class="settings-list">${catList}</div>
+    <div class="settings-layout">
+      <div class="settings-nav-panel">
+        <div class="settings-nav-group">Manage</div>
+        ${navHtml}
       </div>
-      <div class="settings-card">
-        <div class="settings-card-header">
-          <span class="settings-card-title">Tags</span>
-          <button class="btn btn-primary btn-sm" onclick="openTagModal()">+ Add</button>
-        </div>
-        <div class="settings-list">${tagList}</div>
-      </div>
-    </div>
-
-    <div class="settings-card" style="margin-top:24px">
-      <div class="settings-card-header">
-        <span class="settings-card-title">📤 Data Export</span>
-      </div>
-      <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-        <div>
-          <div style="font-size:14px;color:var(--text-1);font-weight:500">Export All Items to CSV</div>
-          <div style="font-size:12px;color:var(--text-3);margin-top:4px">
-            Includes: Name, Description, Location path, Category, Tags, Quantity, Price, Serial/Model #, Notes, Custom Fields
-          </div>
-        </div>
-        <a href="/api/items/export" download
-           class="btn btn-primary"
-           style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">
-          ⬇️ Download CSV
-        </a>
+      <div class="settings-content-panel" id="settings-content">
+        ${_renderSettingsContent()}
       </div>
     </div>`;
-
 }
 
+function selectSettingsSection(id) {
+  window._settingsSection = id;
+  document.querySelectorAll('.settings-nav-item').forEach(el => {
+    const elId = el.getAttribute('onclick')?.match(/'(\w+)'/)?.[1];
+    el.classList.toggle('active', elId === id);
+  });
+  const panel = document.getElementById('settings-content');
+  if (panel) panel.innerHTML = _renderSettingsContent();
+}
+
+function _renderSettingsContent() {
+  const section = window._settingsSection || 'categories';
+
+  if (section === 'categories') {
+    const catList = S.categories.map(c => `
+      <div class="settings-item">
+        <span class="settings-item-icon">${c.icon||'🏷️'}</span>
+        <span class="color-dot" style="background:${c.color}"></span>
+        <span class="settings-item-name">${esc(c.name)}</span>
+        <div class="settings-item-actions">
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="editCategory(${c.id})">✏️</button>
+          <button class="btn btn-danger btn-sm btn-icon" onclick="deleteCategory(${c.id})">🗑️</button>
+        </div>
+      </div>`).join('') || `<div style="padding:20px;color:var(--text-3);font-size:13px;text-align:center">No categories yet. Add one to get started.</div>`;
+
+    return `
+      <div class="settings-content-title">
+        <span>🏷️ Categories</span>
+        <button class="btn btn-primary btn-sm" onclick="openCategoryModal()">+ Add Category</button>
+      </div>
+      <div class="settings-list">${catList}</div>`;
+  }
+
+  if (section === 'tags') {
+    const tagList = S.tags.map(t => `
+      <div class="settings-item">
+        <span class="settings-item-icon" style="color:var(--primary-h);font-size:14px">#</span>
+        <span class="settings-item-name">${esc(t.name)}</span>
+        <div class="settings-item-actions">
+          <button class="btn btn-danger btn-sm btn-icon" onclick="deleteTag(${t.id})">🗑️</button>
+        </div>
+      </div>`).join('') || `<div style="padding:20px;color:var(--text-3);font-size:13px;text-align:center">No tags yet. Add tags to organize your items.</div>`;
+
+    return `
+      <div class="settings-content-title">
+        <span>🔖 Tags</span>
+        <button class="btn btn-primary btn-sm" onclick="openTagModal()">+ Add Tag</button>
+      </div>
+      <div class="settings-list">${tagList}</div>`;
+  }
+
+  if (section === 'export') {
+    return `
+      <div class="settings-content-title"><span>📤 Data Export</span></div>
+      <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:24px;display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap">
+        <div style="font-size:36px">⬇️</div>
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:15px;font-weight:600;color:var(--text-1);margin-bottom:6px">Export All Items to CSV</div>
+          <div style="font-size:13px;color:var(--text-2);line-height:1.7;margin-bottom:16px">
+            Downloads a timestamped CSV file containing all your inventory items.<br>
+            <span style="color:var(--text-3);font-size:12px">Columns: ID, Name, Description, Location path, Category, Tags, Quantity, Price, Purchase Date, Serial #, Model #, Notes, Custom Fields, Has Photo, Documents</span>
+          </div>
+          <a href="/api/items/export" download class="btn btn-primary" style="text-decoration:none">
+            ⬇️ Download CSV
+          </a>
+        </div>
+      </div>`;
+  }
+
+  return '';
+}
+
+
+
 // ── Item Detail ────────────────────────────────────────────────────────────
+
 async function openItemDetail(id) {
   const item = await api.get(`/items/${id}`);
   const locPath = locationPath(item.location_id);
