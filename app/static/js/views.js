@@ -230,7 +230,27 @@ async function renderSettings() {
         </div>
         <div class="settings-list">${tagList}</div>
       </div>
+    </div>
+
+    <div class="settings-card" style="margin-top:24px">
+      <div class="settings-card-header">
+        <span class="settings-card-title">📤 Data Export</span>
+      </div>
+      <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-size:14px;color:var(--text-1);font-weight:500">Export All Items to CSV</div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:4px">
+            Includes: Name, Description, Location path, Category, Tags, Quantity, Price, Serial/Model #, Notes, Custom Fields
+          </div>
+        </div>
+        <a href="/api/items/export" download
+           class="btn btn-primary"
+           style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+          ⬇️ Download CSV
+        </a>
+      </div>
     </div>`;
+
 }
 
 // ── Item Detail ────────────────────────────────────────────────────────────

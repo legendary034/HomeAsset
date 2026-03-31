@@ -45,11 +45,78 @@ def get_items(
     return query.order_by(Item.name).all()
 
 
+import csv
+import io
+from datetime import datetime
+
+from ..models import Location
+
+
+# ── CSV Export ────────────────────────────────────────────────────────────────
+
+@router.get("/export")
+def export_items_csv(db: Session = Depends(get_db)):
+    """Download all items as a CSV file."""
+    from fastapi.responses import StreamingResponse
+
+    items = db.query(Item).order_by(Item.name).all()
+    locations = {loc.id: loc for loc in db.query(Location).all()}
+
+    def loc_path(location_id):
+        if not location_id:
+            return ""
+        parts = []
+        loc = locations.get(location_id)
+        while loc:
+            parts.insert(0, loc.name)
+            loc = locations.get(loc.parent_id) if loc.parent_id else None
+        return " > ".join(parts)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "ID", "Name", "Description", "Location", "Category", "Tags",
+        "Quantity", "Purchase Price ($)", "Purchase Date",
+        "Serial Number", "Model Number", "Notes", "Custom Fields",
+        "Has Photo", "Documents",
+    ])
+
+    for item in items:
+        writer.writerow([
+            item.id,
+            item.name,
+            item.description or "",
+            loc_path(item.location_id),
+            f"{item.category.icon or ''} {item.category.name}".strip() if item.category else "",
+            ", ".join(t.name for t in item.tags),
+            item.quantity,
+            f"{item.purchase_price:.2f}" if item.purchase_price else "",
+            item.purchase_date or "",
+            item.serial_number or "",
+            item.model_number or "",
+            item.notes or "",
+            "; ".join(f"{cf.key}: {cf.value or ''}" for cf in item.custom_fields),
+            "Yes" if item.image_path else "No",
+            len(item.documents),
+        ])
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"homeasset_items_{timestamp}.csv"
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
 # ── Single Item ────────────────────────────────────────────────────────────────
 
 @router.get("/{item_id}", response_model=ItemDetail)
 def get_item(item_id: int, db: Session = Depends(get_db)):
     return _get_or_404(db, item_id)
+
 
 
 # ── Create ─────────────────────────────────────────────────────────────────────
