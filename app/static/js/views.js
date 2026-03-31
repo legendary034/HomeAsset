@@ -410,6 +410,7 @@ function _showItemForm(item, prefillLocId) {
 
   const existingTags = editing ? item.tags : [];
   window._itemFormTags = [...existingTags];
+  window._pendingItemImage = null;
 
   const cfRows = (editing && item.custom_fields.length)
     ? item.custom_fields.map((_,i) => cfRowHtml(i)).join('')
@@ -462,16 +463,30 @@ function _showItemForm(item, prefillLocId) {
         </div>
       </div>
       <div class="form-group">
+        <label class="form-label">Photo</label>
+        <div id="item-form-img-area" onclick="document.getElementById('item-form-img-input').click()"
+          style="border:2px dashed var(--border);border-radius:8px;cursor:pointer;overflow:hidden;transition:border-color .2s;min-height:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;position:relative">
+          <img id="item-form-img-preview" ${item?.image_path ? `src="/uploads/${item.image_path}"` : ''}
+            style="width:100%;max-height:200px;object-fit:cover;border-radius:6px;display:${item?.image_path?'block':'none'}" />
+          <div id="item-form-img-placeholder" style="text-align:center;${item?.image_path?'display:none':''}">
+            <div style="font-size:28px;margin-bottom:6px">📷</div>
+            <div style="color:var(--text-2);font-size:13px">Click to upload a photo</div>
+            <div style="color:var(--text-3);font-size:11px;margin-top:3px">JPG, PNG, WebP</div>
+          </div>
+          <input type="file" id="item-form-img-input" accept="image/*" style="display:none" onchange="previewItemFormImage(this)" />
+        </div>
+      </div>
+      <div class="form-group">
         <label class="form-label">Tags</label>
         <div id="tag-input-wrap" style="position:relative">
           <div class="tag-input-container" id="tag-input-container" onclick="document.getElementById('tag-field').focus()">
             ${existingTags.map(t=>`<span class="tag removable" data-id="${t.id}" onclick="removeItemFormTag(${t.id})"><span>#${esc(t.name)}</span><span class="tag-remove">×</span></span>`).join('')}
-            <input id="tag-field" class="tag-input-field" placeholder="${existingTags.length?'':'Add tags…'}" autocomplete="off"
+            <input id="tag-field" class="tag-input-field" placeholder="${existingTags.length?'':'Type tags, separate with spaces…'}" autocomplete="off"
               oninput="onTagFieldInput(this.value)" onkeydown="onTagFieldKey(event)" />
           </div>
           <div class="tag-suggestions hidden" id="tag-suggestions"></div>
         </div>
-        <div class="form-hint">Type and press Enter to add a tag; click × to remove</div>
+        <div class="form-hint">Separate multiple tags with spaces or commas — press Space or Enter to add all at once</div>
       </div>
       <div class="form-group">
         <label class="form-label">Notes</label>
@@ -522,33 +537,59 @@ function addCfRow() {
 
 // Tag input in item form
 function onTagFieldInput(val) {
-  const q = val.trim().toLowerCase();
+  // Show suggestions for the LAST word being typed
+  const parts = val.split(/[\s,]+/);
+  const lastWord = parts[parts.length - 1].trim().toLowerCase();
   const sugg = document.getElementById('tag-suggestions');
   const existing = new Set(window._itemFormTags.map(t=>t.id));
-  if (!q) { sugg.classList.add('hidden'); return; }
-  const matches = S.tags.filter(t => t.name.toLowerCase().includes(q) && !existing.has(t.id));
-  if (!matches.length && !q) { sugg.classList.add('hidden'); return; }
+  if (!lastWord) { sugg.classList.add('hidden'); return; }
+  const matches = S.tags.filter(t => t.name.toLowerCase().includes(lastWord) && !existing.has(t.id));
   sugg.classList.remove('hidden');
-  sugg.innerHTML = matches.slice(0,6).map(t =>
-    `<div class="tag-suggestion-item" onclick="addItemFormTag(${t.id},'${esc(t.name)}')">#${esc(t.name)}</div>`
-  ).join('') + (q ? `<div class="tag-suggestion-item" onclick="createAndAddTag('${esc(q)}')">+ Create "#${esc(q)}"</div>` : '');
+  const wordCount = parts.filter(p=>p.trim().length>0).length;
+  sugg.innerHTML = matches.slice(0,5).map(t =>
+    `<div class="tag-suggestion-item" onclick="selectSuggestionTag(${t.id},'${esc(t.name)}')">#${esc(t.name)}</div>`
+  ).join('') + `<div class="tag-suggestion-item" onclick="createTagsFromInput()">+ Add ${wordCount>1?wordCount+' tags':'"#'+esc(lastWord)+'"'}</div>`;
 }
 
 function onTagFieldKey(e) {
-  if (e.key === 'Enter' || e.key === ',') {
+  if (e.key === ' ' || e.key === 'Enter' || e.key === ',') {
     e.preventDefault();
-    const val = e.target.value.trim().replace(/,/g,'');
-    if (val) createAndAddTag(val);
+    createTagsFromInput();
   } else if (e.key === 'Escape') {
     document.getElementById('tag-suggestions').classList.add('hidden');
   }
+}
+
+async function createTagsFromInput() {
+  const field = document.getElementById('tag-field');
+  const val = field.value.trim();
+  if (!val) return;
+  const words = val.split(/[\s,]+/).filter(w => w.length > 0);
+  for (const word of words) {
+    await createAndAddTag(word);
+  }
+  field.value = '';
+  document.getElementById('tag-suggestions').classList.add('hidden');
+}
+
+function selectSuggestionTag(id, name) {
+  // Replace only the last partial word in the field, then add the tag
+  const field = document.getElementById('tag-field');
+  const parts = (field.value || '').split(/[\s,]+/);
+  parts.pop();
+  field.value = parts.filter(p=>p).join(' ');
+  if (field.value) field.value += ' ';
+  addItemFormTag(id, name);
+  document.getElementById('tag-suggestions').classList.add('hidden');
+  field.focus();
 }
 
 function addItemFormTag(id, name) {
   if (window._itemFormTags.find(t=>t.id===id)) return;
   window._itemFormTags.push({id, name});
   _renderItemFormTags();
-  document.getElementById('tag-field').value = '';
+  const field = document.getElementById('tag-field');
+  if (field && !field.value.trim()) field.value = '';
   document.getElementById('tag-suggestions').classList.add('hidden');
 }
 
@@ -558,6 +599,22 @@ async function createAndAddTag(name) {
     if (!S.tags.find(t=>t.id===tag.id)) S.tags.push(tag);
     addItemFormTag(tag.id, tag.name);
   } catch(e) { toast(e.message,'error'); }
+}
+
+function previewItemFormImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+  window._pendingItemImage = file;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const preview = document.getElementById('item-form-img-preview');
+    const placeholder = document.getElementById('item-form-img-placeholder');
+    preview.src = e.target.result;
+    preview.style.display = 'block';
+    if (placeholder) placeholder.style.display = 'none';
+    document.getElementById('item-form-img-area').style.padding = '0';
+  };
+  reader.readAsDataURL(file);
 }
 
 function removeItemFormTag(id) {
@@ -608,8 +665,18 @@ async function saveItem(id) {
   };
 
   try {
-    if (id) await api.put(`/items/${id}`, payload);
-    else await api.post('/items', payload);
+    let savedItem;
+    if (id) savedItem = await api.put(`/items/${id}`, payload);
+    else savedItem = await api.post('/items', payload);
+
+    // Upload photo if one was selected in the form
+    if (window._pendingItemImage) {
+      const fd = new FormData();
+      fd.append('file', window._pendingItemImage);
+      await api.upload(`/items/${savedItem.id}/image`, fd);
+      window._pendingItemImage = null;
+    }
+
     toast(id ? 'Item updated!' : 'Item created!', 'success');
     closeModal();
     await loadSidebarTree();
