@@ -95,6 +95,11 @@ app.mount("/static",    StaticFiles(directory="app/static"),      name="static")
 
 
 # ── 3. SPA catch-all LAST ─────────────────────────────────────────────────────
+from fastapi import HTTPException  # noqa
+
 @app.get("/{full_path:path}")
 def serve_spa(full_path: str):
+    # Never serve the SPA for API paths — return a proper 404 instead
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API endpoint not found")
     return FileResponse("app/static/index.html")
