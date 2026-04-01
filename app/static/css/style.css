@@ -78,7 +78,7 @@ img { max-width: 100%; }
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
-.sidebar-logo-icon { font-size: 26px; }
+.sidebar-logo-img { width: 36px; height: 36px; object-fit: contain; }
 .sidebar-logo-text { font-size: 18px; font-weight: 700; color: var(--primary-h); letter-spacing: -0.3px; }
 .sidebar-logo-sub  { font-size: 10px; color: var(--text-3); letter-spacing: 0.5px; text-transform: uppercase; }
 
