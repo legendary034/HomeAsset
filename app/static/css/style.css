@@ -247,6 +247,25 @@ img { max-width: 100%; }
 .stat-value { font-size: 28px; font-weight: 700; letter-spacing: -1px; }
 .stat-label { font-size: 12px; color: var(--text-2); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
 
+/* ── Compact Stats Row ─────────────────────────────────────────────────────── */
+.stats-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  justify-content: space-between;
+}
+.stat-card.compact {
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.stat-icon-compact { font-size: 20px; flex-shrink: 0; }
+.stat-value-compact { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* ── Section ───────────────────────────────────────────────────────────────── */
 .section { margin-bottom: 32px; }
 .section-header {

@@ -280,15 +280,14 @@ async function renderDashboard() {
   const recent = recentRes.status === 'fulfilled' ? recentRes.value : [];
 
   const statCards = [
-    { icon:'📦', value: stats.total_items,      label:'Items' },
-    { icon:'📍', value: stats.total_locations,  label:'Locations' },
-    { icon:'🏷️', value: stats.total_categories, label:'Categories' },
-    { icon:'🔖', value: stats.total_tags,        label:'Tags' },
+    { icon:'📦', value: stats.total_items },
+    { icon:'📍', value: stats.total_locations },
+    { icon:'🏷️', value: stats.total_categories },
+    { icon:'🔖', value: stats.total_tags },
   ].map(s => `
-    <div class="stat-card">
-      <div class="stat-icon">${s.icon}</div>
-      <div class="stat-value">${s.value}</div>
-      <div class="stat-label">${s.label}</div>
+    <div class="stat-card compact">
+      <div class="stat-icon-compact">${s.icon}</div>
+      <div class="stat-value-compact">${s.value}</div>
     </div>`).join('');
 
   const itemsHtml = recent.length
@@ -296,11 +295,8 @@ async function renderDashboard() {
     : `<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-title">No items yet</div><div class="empty-text">Click "+ Add Item" to get started.</div></div>`;
 
   document.getElementById('main-content').innerHTML = `
-    <div class="page-header">
-      <div><div class="page-title">Dashboard</div><div class="page-subtitle">Overview of your home inventory</div></div>
-    </div>
-    <div class="stats-grid">${statCards}</div>
-    <div class="section">
+    <div class="stats-row">${statCards}</div>
+    <div class="section" style="margin-top:24px">
       <div class="section-header">
         <div class="section-title">Recent Items</div>
         <button class="btn btn-ghost btn-sm" onclick="navigate('items')">View All →</button>

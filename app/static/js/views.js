@@ -136,10 +136,9 @@ function currentFilters() { return window._currentFilters || {}; }
 // ── Search ─────────────────────────────────────────────────────────────────
 async function renderSearch(prefill = '') {
   await refreshShared();
-  const selectedTagIds = new Set();
 
-  const tagChips = S.tags.map(t => `
-    <span class="tag-chip" id="tc-${t.id}" data-id="${t.id}" onclick="toggleSearchTag(${t.id})">#${esc(t.name)}</span>`
+  const catChips = S.categories.map(c => `
+    <span class="tag-chip" id="cc-${c.id}" onclick="toggleSearchCategory(${c.id})">${esc(c.icon||'')} ${esc(c.name)}</span>`
   ).join('');
 
   document.getElementById('main-content').innerHTML = `
@@ -150,21 +149,25 @@ async function renderSearch(prefill = '') {
         <input id="search-input-big" class="search-input-big" type="text" placeholder="Search items by name, description, serial number…" autocomplete="off" value="${esc(prefill)}" oninput="doSearch()" />
       </div>
       <div class="tag-filter-chips">
-        <span class="tag-filter-label">Filter by tag:</span>
-        ${tagChips || '<span style="color:var(--text-3);font-size:12px">No tags yet</span>'}
+        <span class="tag-filter-label">Filter by category:</span>
+        ${catChips || '<span style="color:var(--text-3);font-size:12px">No categories yet</span>'}
       </div>
     </div>
     <div id="search-results"></div>`;
 
-  window._searchSelectedTags = selectedTagIds;
+  window._searchSelectedCategory = null;
   if (prefill) doSearch();
 }
 
-function toggleSearchTag(id) {
-  const tags = window._searchSelectedTags;
-  const el = document.getElementById(`tc-${id}`);
-  if (tags.has(id)) { tags.delete(id); el.classList.remove('selected'); }
-  else { tags.add(id); el.classList.add('selected'); }
+function toggleSearchCategory(id) {
+  const isSelected = window._searchSelectedCategory === id;
+  document.querySelectorAll('.tag-filter-chips .tag-chip').forEach(el => el.classList.remove('selected'));
+  if (isSelected) {
+    window._searchSelectedCategory = null;
+  } else {
+    window._searchSelectedCategory = id;
+    document.getElementById(`cc-${id}`).classList.add('selected');
+  }
   doSearch();
 }
 
@@ -173,20 +176,20 @@ function doSearch() {
   clearTimeout(_searchTimer);
   _searchTimer = setTimeout(async () => {
     const q = document.getElementById('search-input-big')?.value?.trim() || '';
-    const tags = window._searchSelectedTags;
-    if (!q && !tags.size) {
+    const catId = window._searchSelectedCategory;
+    if (!q && !catId) {
       document.getElementById('search-results').innerHTML = '';
       return;
     }
     let qs = [];
     if (q) qs.push(`q=${encodeURIComponent(q)}`);
-    if (tags.size) qs.push(`tag_ids=${[...tags].join(',')}`);
+    if (catId) qs.push(`category_id=${catId}`);
     const items = await api.get('/search?' + qs.join('&'));
     const el = document.getElementById('search-results');
     if (!el) return;
     el.innerHTML = items.length
       ? `<div class="section-header"><div class="section-title">${items.length} result${items.length!==1?'s':''}</div></div><div class="items-grid">${items.map(itemCardHtml).join('')}</div>`
-      : `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No results</div><div class="empty-text">Try different keywords or tags.</div></div>`;
+      : `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No results</div><div class="empty-text">Try different keywords or categories.</div></div>`;
   }, 250);
 }
 
