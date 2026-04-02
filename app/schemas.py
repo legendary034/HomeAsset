@@ -16,6 +16,16 @@ class TagResponse(TagBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
 
+class BulkTags(BaseModel):
+    names: List[str]
+
+class BulkTagDelete(BaseModel):
+    tag_ids: List[int]
+
+class BulkTagAssociate(BaseModel):
+    tag_ids: List[int]
+    item_ids: List[int]
+
 
 # ── Categories ────────────────────────────────────────────────────────────────
 

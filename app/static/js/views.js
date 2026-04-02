@@ -260,6 +260,7 @@ function _renderSettingsContent() {
   if (section === 'tags') {
     const tagList = S.tags.map(t => `
       <div class="settings-item">
+        <input type="checkbox" class="tag-checkbox" value="${t.id}" onchange="updateTagBulkActions()" style="margin-right: 12px; cursor: pointer;">
         <span class="settings-item-icon" style="color:var(--primary-h);font-size:14px">#</span>
         <span class="settings-item-name">${esc(t.name)}</span>
         <div class="settings-item-actions">
@@ -270,9 +271,32 @@ function _renderSettingsContent() {
     return `
       <div class="settings-content-title">
         <span>🔖 Tags</span>
-        <button class="btn btn-primary btn-sm" onclick="openTagModal()">+ Add Tag</button>
       </div>
-      <div class="settings-list">${tagList}</div>`;
+      
+      <div style="margin-bottom: 24px; padding: 16px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius);">
+        <div style="font-weight: 600; margin-bottom: 8px;">Quick Add Tags</div>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="bulk-add-tags-input" class="form-input" placeholder="e.g. fragile, living-room, electronics" onkeydown="if(event.key==='Enter') bulkAddTags()" style="flex: 1;">
+          <button class="btn btn-primary" onclick="bulkAddTags()">Add Tags</button>
+        </div>
+        <div style="font-size: 12px; color: var(--text-3); margin-top: 6px;">Separate multiple tags with spaces or commas.</div>
+      </div>
+
+      <div id="tag-bulk-actions" style="margin-bottom: 16px; padding: 12px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); display: none; align-items: center; justify-content: space-between;">
+        <div style="font-weight: 500; font-size: 14px;"><span id="tag-bulk-count">0</span> selected</div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-primary btn-sm" onclick="openAssociateTagsModal()">Associate to Items</button>
+          <button class="btn btn-danger btn-sm" onclick="bulkDeleteSelectedTags()">Delete Selected</button>
+        </div>
+      </div>
+
+      <div class="settings-list">
+        ${S.tags.length ? `<div style="padding: 8px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center;">
+          <input type="checkbox" id="tag-select-all" onchange="toggleAllTags(this.checked)" style="margin-right: 12px; cursor: pointer;">
+          <label for="tag-select-all" style="font-size: 13px; color: var(--text-2); cursor: pointer;">Select All</label>
+        </div>` : ''}
+        ${tagList}
+      </div>`;
   }
 
   if (section === 'export') {
@@ -935,4 +959,141 @@ async function deleteTag(id) {
     await refreshShared();
     navigate('settings');
   } catch(e) { toast(e.message,'error'); }
+}
+
+// ── Tags Bulk Operations ──────────────────────────────────────────────────
+function getSelectedTagIds() {
+  return Array.from(document.querySelectorAll('.tag-checkbox:checked')).map(cb => parseInt(cb.value));
+}
+
+function updateTagBulkActions() {
+  const ids = getSelectedTagIds();
+  const bar = document.getElementById('tag-bulk-actions');
+  const count = document.getElementById('tag-bulk-count');
+  const selectAll = document.getElementById('tag-select-all');
+  
+  if (ids.length > 0) {
+    bar.style.display = 'flex';
+    count.textContent = ids.length;
+  } else {
+    bar.style.display = 'none';
+  }
+  
+  if (selectAll) {
+    selectAll.checked = (ids.length > 0 && ids.length === document.querySelectorAll('.tag-checkbox').length);
+  }
+}
+
+function toggleAllTags(checked) {
+  document.querySelectorAll('.tag-checkbox').forEach(cb => cb.checked = checked);
+  updateTagBulkActions();
+}
+
+async function bulkAddTags() {
+  const input = document.getElementById('bulk-add-tags-input');
+  if (!input) return;
+  const val = input.value.trim();
+  if (!val) return;
+  const parts = val.split(/[\s,]+/).filter(w => w.length > 0);
+  if (!parts.length) return;
+  
+  try {
+    const newTags = await api.post('/tags/bulk', { names: parts });
+    for (const t of newTags) {
+      if (!S.tags.find(existing => existing.id === t.id)) {
+        S.tags.push(t);
+      }
+    }
+    toast(`Added ${newTags.length} tag(s)`, 'success');
+    input.value = '';
+    selectSettingsSection('tags');
+  } catch(e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function bulkDeleteSelectedTags() {
+  const ids = getSelectedTagIds();
+  if (!ids.length) return;
+  if (!confirm(`Delete ${ids.length} selected tag(s)? This cannot be undone.`)) return;
+  
+  try {
+    await api.post('/tags/bulk-delete', { tag_ids: ids });
+    S.tags = S.tags.filter(t => !ids.includes(t.id));
+    toast(`Deleted ${ids.length} tag(s)`, 'success');
+    selectSettingsSection('tags');
+  } catch(e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function openAssociateTagsModal() {
+  const tagIds = getSelectedTagIds();
+  if (!tagIds.length) return;
+  
+  const tags = S.tags.filter(t => tagIds.includes(t.id));
+  const tagChips = tags.map(t => `<span class="tag">#${esc(t.name)}</span>`).join('');
+  
+  const items = await api.get('/items');
+  let itemsHtml = items.length ? items.map(i => `
+    <div style="padding: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; cursor: pointer;">
+      <input type="checkbox" class="associate-item-cb" value="${i.id}" id="ai-${i.id}" style="cursor: pointer;">
+      <label for="ai-${i.id}" style="flex: 1; cursor: pointer;">
+        <div style="font-weight: 500;">${esc(i.name)}</div>
+        <div style="font-size: 12px; color: var(--text-3);">${esc(i.category?.name || 'Uncategorized')}</div>
+      </label>
+    </div>
+  `).join('') : '<div style="padding: 16px; text-align: center; color: var(--text-3);">No items available.</div>';
+
+  openModal(`
+    <div class="modal-header">
+      <div class="modal-title">Associate Tags</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 13px; color: var(--text-2); margin-bottom: 8px;">Selected Tags:</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">${tagChips}</div>
+      </div>
+      
+      <div style="font-size: 13px; color: var(--text-2); margin-bottom: 8px;">Select items to add these tags to:</div>
+      
+      <div style="display: flex; align-items: center; margin-bottom: 8px;">
+        <input type="text" class="form-input form-sm" placeholder="Filter items..." oninput="filterAssociateItems(this.value)" style="flex: 1;">
+      </div>
+      
+      <div class="associate-items-list" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius);">
+        ${itemsHtml}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAssociateTags([${tagIds.join(',')}])">Apply Tags</button>
+    </div>
+  `, true);
+}
+
+function filterAssociateItems(query) {
+  const q = query.toLowerCase();
+  document.querySelectorAll('.associate-items-list > div').forEach(div => {
+    const text = div.textContent.toLowerCase();
+    div.style.display = text.includes(q) ? 'flex' : 'none';
+  });
+}
+
+async function submitAssociateTags(tagIds) {
+  const itemIds = Array.from(document.querySelectorAll('.associate-item-cb:checked')).map(cb => parseInt(cb.value));
+  if (!itemIds.length) {
+    toast('No items selected', 'error');
+    return;
+  }
+  
+  try {
+    await api.post('/tags/associate', { tag_ids: tagIds, item_ids: itemIds });
+    toast(`Successfully paired tags with ${itemIds.length} item(s)!`, 'success');
+    closeModal();
+    selectSettingsSection('tags');
+  } catch(e) {
+    toast(e.message, 'error');
+  }
 }
