@@ -201,7 +201,7 @@ async function renderSettings() {
   const navItems = [
     { id: 'categories', icon: '🏷️', label: 'Categories' },
     { id: 'tags',       icon: '🔖', label: 'Tags' },
-    { id: 'export',     icon: '📤', label: 'Data Export' },
+    { id: 'data',       icon: '💾', label: 'Data Management' },
   ];
 
   const navHtml = navItems.map(s => `
@@ -299,20 +299,48 @@ function _renderSettingsContent() {
       </div>`;
   }
 
-  if (section === 'export') {
+  if (section === 'data') {
     return `
-      <div class="settings-content-title"><span>📤 Data Export</span></div>
-      <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:24px;display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap">
+      <div class="settings-content-title"><span>💾 Data Management</span></div>
+      
+      <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:24px;display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;margin-bottom:16px;">
         <div style="font-size:36px">⬇️</div>
         <div style="flex:1;min-width:200px">
           <div style="font-size:15px;font-weight:600;color:var(--text-1);margin-bottom:6px">Export All Items to CSV</div>
           <div style="font-size:13px;color:var(--text-2);line-height:1.7;margin-bottom:16px">
             Downloads a timestamped CSV file containing all your inventory items.<br>
-            <span style="color:var(--text-3);font-size:12px">Columns: ID, Name, Description, Location path, Category, Tags, Quantity, Price, Purchase Date, Serial #, Model #, Notes, Custom Fields, Has Photo, Documents</span>
+            <span style="color:var(--text-3);font-size:12px">Columns: ID, Name, Description, Location path, Category, Tags, Quantity, Price, Purchase Date, Serial #, Model #, Notes, Custom Fields, Image Path, Documents</span>
           </div>
           <a href="/api/items/export" download class="btn btn-primary" style="text-decoration:none">
             ⬇️ Download CSV
           </a>
+        </div>
+      </div>
+
+      <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:24px;display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;margin-bottom:16px;">
+        <div style="font-size:36px">⬆️</div>
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:15px;font-weight:600;color:var(--text-1);margin-bottom:6px">Import Items from CSV</div>
+          <div style="font-size:13px;color:var(--text-2);line-height:1.7;margin-bottom:16px">
+            Upload a CSV file to add items to your inventory.
+          </div>
+          <label class="btn btn-primary" style="cursor:pointer; display:inline-block">
+            ⬆️ Select & Import CSV
+            <input type="file" accept=".csv" style="display:none" onchange="importCsvData(this)" />
+          </label>
+        </div>
+      </div>
+
+      <div style="background:var(--bg-elevated);border:1px solid var(--border);border-color:var(--danger);border-radius:var(--radius);padding:24px;display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap">
+        <div style="font-size:36px">⚠️</div>
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:15px;font-weight:600;color:var(--danger);margin-bottom:6px">Wipe Data</div>
+          <div style="font-size:13px;color:var(--text-2);line-height:1.7;margin-bottom:16px">
+            This will permanently delete all Items and Tags. Locations and Categories will be preserved.
+          </div>
+          <button class="btn btn-danger" onclick="openWipeConfirmation()">
+            🗑️ Wipe All Items
+          </button>
         </div>
       </div>`;
   }
@@ -1095,5 +1123,59 @@ async function submitAssociateTags(tagIds) {
     selectSettingsSection('tags');
   } catch(e) {
     toast(e.message, 'error');
+  }
+}
+
+// ── Data Management Operations ────────────────────────────────────────────────
+
+async function importCsvData(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  document.getElementById('settings-content').innerHTML = '<div class="loader"><div class="spinner"></div> Importing...</div>';
+  try {
+    const res = await api.upload('/items/import', fd);
+    toast(`Successfully imported ${res.imported_count} item(s)!`, 'success');
+    await refreshShared();
+    selectSettingsSection('data');
+  } catch(e) {
+    toast(e.message, 'error');
+    selectSettingsSection('data');
+  }
+}
+
+function openWipeConfirmation() {
+  openModal(`
+    <div class="modal-header">
+      <div class="modal-title">⚠️ Wipe Data</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text-1);font-weight:500">Are you absolutely sure?</p>
+      <p style="color:var(--text-2);font-size:13px;margin:12px 0;">This will permanently delete all items and tags from your inventory. This action cannot be undone.</p>
+      <div class="form-group" style="margin-top:20px;">
+        <label class="form-label" style="color:var(--danger)">Type "WIPE" to confirm</label>
+        <input type="text" id="wipe-confirm-input" class="form-input" placeholder="WIPE" autocomplete="off" oninput="document.getElementById('btn-wipe-confirm').disabled = (this.value !== 'WIPE');" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" id="btn-wipe-confirm" disabled onclick="submitWipeData()">Yes, Delete Everything</button>
+    </div>
+  `);
+}
+
+async function submitWipeData() {
+  closeModal();
+  document.getElementById('settings-content').innerHTML = '<div class="loader"><div class="spinner"></div> Wiping Data...</div>';
+  try {
+    await api.delete('/items/wipe');
+    toast('Data successfully wiped', 'success');
+    await refreshShared();
+    navigate('dashboard');
+  } catch(e) {
+    toast(e.message, 'error');
+    selectSettingsSection('data');
   }
 }
