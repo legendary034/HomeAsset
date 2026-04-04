@@ -186,7 +186,7 @@ async def import_items_csv(file: UploadFile = File(...), db: Session = Depends(g
         purchase_date_val = row.get("Purchase Date", "")
         if purchase_date_val:
             try:
-                datetime.strptime(purchase_date_val, "%Y-%m-%d")
+                purchase_date_val = datetime.strptime(purchase_date_val, "%Y-%m-%d").date()
             except ValueError:
                 purchase_date_val = None
         else:
