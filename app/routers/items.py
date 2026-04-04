@@ -115,7 +115,13 @@ def export_items_csv(db: Session = Depends(get_db)):
 
 @router.delete("/wipe")
 def wipe_all_data(db: Session = Depends(get_db)):
-    # Delete all items and tags. Excludes Locations and Categories.
+    from ..models import CustomField, Document, MaintenanceSchedule, item_tags
+    # Explicitly delete child entities to clean up any orphaned data
+    db.query(CustomField).delete()
+    db.query(Document).delete()
+    db.query(MaintenanceSchedule).delete()
+    db.execute(item_tags.delete())
+    # Delete parent entities
     db.query(Item).delete()
     db.query(Tag).delete()
     db.commit()
@@ -217,8 +223,13 @@ async def import_items_csv(file: UploadFile = File(...), db: Session = Depends(g
                     
         items_to_add.append(new_item)
 
-    db.add_all(items_to_add)
-    db.commit()
+    try:
+        db.add_all(items_to_add)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        import traceback
+        raise HTTPException(status_code=400, detail=traceback.format_exc())
     
     return {"ok": True, "imported_count": len(items_to_add)}
 
