@@ -166,7 +166,7 @@ async function navigate(route, param = null) {
       case 'dashboard':  await renderDashboard(); break;
       case 'locations':  await renderLocations(); break;
       case 'location':   await renderLocationDetail(param); break;
-      case 'items':      await renderItems({}); break;
+      case 'items':      await renderItems(param || {}); break;
       case 'search':     await renderSearch(); break;
       case 'settings':   await renderSettings(); break;
       default:           await renderDashboard();
@@ -270,14 +270,12 @@ function itemCardHtml(item) {
 
 // ── Dashboard ──────────────────────────────────────────────────────────────
 async function renderDashboard() {
-  const [statsRes, recentRes] = await Promise.allSettled([
+  const [statsRes] = await Promise.allSettled([
     api.get('/stats'),
-    api.get('/items'),
   ]);
   await refreshShared();
 
   const stats  = statsRes.status  === 'fulfilled' ? statsRes.value  : { total_items:0, total_locations:0, total_categories:0, total_tags:0 };
-  const recent = recentRes.status === 'fulfilled' ? recentRes.value : [];
 
   const statCards = [
     { icon:'📦', value: stats.total_items },
@@ -290,18 +288,22 @@ async function renderDashboard() {
       <div class="stat-value-compact">${s.value}</div>
     </div>`).join('');
 
-  const itemsHtml = recent.length
-    ? `<div class="items-grid">${recent.map(itemCardHtml).join('')}</div>`
-    : `<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-title">No items yet</div><div class="empty-text">Click "+ Add Item" to get started.</div></div>`;
+  const catHtml = S.categories.length
+    ? `<div class="locations-grid">${S.categories.map(c => `
+        <div class="location-card" onclick="navigate('items', {category_id: ${c.id}})">
+          <div class="location-card-icon" style="color: ${c.color || 'inherit'}">${esc(c.icon || '🏷️')}</div>
+          <div class="location-card-name">${esc(c.name)}</div>
+        </div>`).join('')}</div>`
+    : `<div class="empty-state"><div class="empty-icon">🏷️</div><div class="empty-title">No categories found</div><div class="empty-text">Add your first category in settings.</div></div>`;
 
   document.getElementById('main-content').innerHTML = `
     <div class="stats-row">${statCards}</div>
     <div class="section" style="margin-top:24px">
       <div class="section-header">
-        <div class="section-title">Recent Items</div>
-        <button class="btn btn-ghost btn-sm" onclick="navigate('items')">View All →</button>
+        <div class="section-title">Categories</div>
+        <button class="btn btn-ghost btn-sm" onclick="navigate('items')">View All Items →</button>
       </div>
-      ${itemsHtml}
+      ${catHtml}
     </div>`;
 }
 
