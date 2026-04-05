@@ -244,6 +244,7 @@ function _renderSettingsContent() {
         <span class="color-dot" style="background:${c.color}"></span>
         <span class="settings-item-name">${esc(c.name)}</span>
         <div class="settings-item-actions">
+          <button class="btn btn-primary btn-sm" onclick="openAssociateCategoryModal(${c.id}, '${esc(c.name).replace(/'/g, "\\'")}')">Associate to Items</button>
           <button class="btn btn-ghost btn-sm btn-icon" onclick="editCategory(${c.id})">✏️</button>
           <button class="btn btn-danger btn-sm btn-icon" onclick="deleteCategory(${c.id})">🗑️</button>
         </div>

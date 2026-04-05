@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from ..database import get_db
-from ..models import Category
-from ..schemas import CategoryCreate, CategoryUpdate, CategoryResponse
+from ..schemas import CategoryCreate, CategoryUpdate, CategoryResponse, BulkCategoryAssociate
+from ..models import Category, Item
 
 router = APIRouter()
 
@@ -43,3 +43,15 @@ def delete_category(category_id: int, db: Session = Depends(get_db)):
     db.delete(cat)
     db.commit()
     return {"ok": True}
+
+@router.post("/associate")
+def associate_category(data: BulkCategoryAssociate, db: Session = Depends(get_db)):
+    cat = db.query(Category).filter(Category.id == data.category_id).first()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found")
+        
+    items = db.query(Item).filter(Item.id.in_(data.item_ids)).all()
+    for item in items:
+        item.category_id = cat.id
+    db.commit()
+    return {"ok": True, "updated": len(items)}

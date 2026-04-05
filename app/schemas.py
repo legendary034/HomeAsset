@@ -49,6 +49,10 @@ class CategoryResponse(CategoryBase):
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
+class BulkCategoryAssociate(BaseModel):
+    category_id: int
+    item_ids: List[int]
+
 
 # ── Locations ─────────────────────────────────────────────────────────────────
 
