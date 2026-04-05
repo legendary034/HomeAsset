@@ -1127,6 +1127,71 @@ async function submitAssociateTags(tagIds) {
   }
 }
 
+async function openAssociateCategoryModal(categoryId, categoryName) {
+  const items = await api.get('/items');
+  let itemsHtml = items.length ? items.map(i => `
+    <div style="padding: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; cursor: pointer;">
+      <input type="checkbox" class="associate-category-cb" value="${i.id}" id="ac-${i.id}" style="cursor: pointer;" ${i.category_id === categoryId ? 'checked' : ''}>
+      <label for="ac-${i.id}" style="flex: 1; cursor: pointer;">
+        <div style="font-weight: 500;">${esc(i.name)}</div>
+        <div style="font-size: 12px; color: var(--text-3);">${esc(i.category?.name || 'Uncategorized')}</div>
+      </label>
+    </div>
+  `).join('') : '<div style="padding: 16px; text-align: center; color: var(--text-3);">No items available.</div>';
+
+  openModal(`
+    <div class="modal-header">
+      <div class="modal-title">Associate with Category</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 13px; color: var(--text-2); margin-bottom: 8px;">Target Category:</div>
+        <div style="font-weight: bold; font-size: 16px;">${categoryName}</div>
+      </div>
+      
+      <div style="font-size: 13px; color: var(--text-2); margin-bottom: 8px;">Select items to move to this category:</div>
+      
+      <div style="display: flex; align-items: center; margin-bottom: 8px;">
+        <input type="text" class="form-input form-sm" placeholder="Filter items..." oninput="filterAssociateCategoryItems(this.value)" style="flex: 1;">
+      </div>
+      
+      <div class="associate-category-items-list" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius);">
+        ${itemsHtml}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAssociateCategory(${categoryId})">Update Selected Items</button>
+    </div>
+  `, true);
+}
+
+function filterAssociateCategoryItems(query) {
+  const q = query.toLowerCase();
+  document.querySelectorAll('.associate-category-items-list > div').forEach(div => {
+    const text = div.textContent.toLowerCase();
+    div.style.display = text.includes(q) ? 'flex' : 'none';
+  });
+}
+
+async function submitAssociateCategory(categoryId) {
+  const itemIds = Array.from(document.querySelectorAll('.associate-category-cb:checked')).map(cb => parseInt(cb.value));
+  if (!itemIds.length) {
+    toast('No items selected', 'error');
+    return;
+  }
+  
+  try {
+    const res = await api.post('/categories/associate', { category_id: categoryId, item_ids: itemIds });
+    toast(`Successfully moved ${res.updated} item(s) to category!`, 'success');
+    closeModal();
+    selectSettingsSection('categories');
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
 // ── Data Management Operations ────────────────────────────────────────────────
 
 async function importCsvData(input) {
